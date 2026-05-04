@@ -1,8 +1,8 @@
 import { TOKEN, PANEL_ID } from './config'
 
-const BASE_CRM = 'https://api.wts.chat/crm/v1'
-const BASE_CRM_V2 = 'https://api.wts.chat/crm/v2'
-const BASE_CORE = 'https://api.wts.chat/core/v1'
+const BASE_CRM = '/api/crm/v1'
+const BASE_CRM_V2 = '/api/crm/v2'
+const BASE_CORE = '/api/core/v1'
 
 export async function getContact(contactId) {
   const res = await fetch(`${BASE_CORE}/contact/${contactId}`, {
