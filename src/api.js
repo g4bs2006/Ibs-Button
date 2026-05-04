@@ -1,11 +1,23 @@
 import { TOKEN, PANEL_ID } from './config'
 
-const BASE_CRM = '/api/crm/v1'
-const BASE_CRM_V2 = '/api/crm/v2'
-const BASE_CORE = '/api/core/v1'
+async function proxyFetch(path, options = {}) {
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  
+  if (isLocal) {
+    return fetch(`/api${path}`, options);
+  } else {
+    return fetch(`/api/proxy`, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'x-target-path': path
+      }
+    });
+  }
+}
 
 export async function getContact(contactId) {
-  const res = await fetch(`${BASE_CORE}/contact/${contactId}`, {
+  const res = await proxyFetch(`/core/v1/contact/${contactId}`, {
     headers: { Authorization: TOKEN }
   })
   if (!res.ok) throw new Error('Contato não encontrado')
@@ -14,7 +26,7 @@ export async function getContact(contactId) {
 
 export async function findCardByContact(contactId, contactName = null) {
   let qs = new URLSearchParams({ PanelId: PANEL_ID, ContactId: contactId, PageSize: 1, PageNumber: 1 })
-  let res = await fetch(`${BASE_CRM}/panel/card?${qs}`, {
+  let res = await proxyFetch(`/crm/v1/panel/card?${qs}`, {
     headers: { Authorization: TOKEN }
   })
   
@@ -25,7 +37,7 @@ export async function findCardByContact(contactId, contactName = null) {
 
   if (contactName) {
     qs = new URLSearchParams({ PanelId: PANEL_ID, TextFilter: contactName, PageSize: 1, PageNumber: 1 })
-    res = await fetch(`${BASE_CRM}/panel/card?${qs}`, {
+    res = await proxyFetch(`/crm/v1/panel/card?${qs}`, {
       headers: { Authorization: TOKEN }
     })
     if (res.ok) {
@@ -42,7 +54,7 @@ export async function updateCardStep(cardId, stepId) {
     fields: ["stepId"],
     stepId
   }
-  const res = await fetch(`${BASE_CRM_V2}/panel/card/${cardId}`, {
+  const res = await proxyFetch(`/crm/v2/panel/card/${cardId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -59,7 +71,7 @@ export async function updateCardStep(cardId, stepId) {
 
 export async function addCardNote(cardId, text) {
   const payload = { text }
-  const res = await fetch(`${BASE_CRM}/panel/card/${cardId}/note`, {
+  const res = await proxyFetch(`/crm/v1/panel/card/${cardId}/note`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -68,8 +80,8 @@ export async function addCardNote(cardId, text) {
     body: JSON.stringify(payload)
   })
   if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(`Erro ao adicionar anotação (HTTP ${res.status}): ${text}`)
+    const errText = await res.text().catch(() => '')
+    throw new Error(`Erro ao adicionar anotação (HTTP ${res.status}): ${errText}`)
   }
   return res.json()
 }
@@ -85,7 +97,7 @@ export async function createCard(stepId, title, description, contactId) {
     payload.contactIds = [contactId]
   }
 
-  const res = await fetch(`${BASE_CRM}/panel/card`, {
+  const res = await proxyFetch(`/crm/v1/panel/card`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
