@@ -12,14 +12,29 @@ export async function getContact(contactId) {
   return res.json()
 }
 
-export async function findCardByContact(contactId) {
-  const qs = new URLSearchParams({ PanelId: PANEL_ID, ContactId: contactId, PageSize: 1, PageNumber: 1 })
-  const res = await fetch(`${BASE_CRM}/panel/card?${qs}`, {
+export async function findCardByContact(contactId, contactName = null) {
+  let qs = new URLSearchParams({ PanelId: PANEL_ID, ContactId: contactId, PageSize: 1, PageNumber: 1 })
+  let res = await fetch(`${BASE_CRM}/panel/card?${qs}`, {
     headers: { Authorization: TOKEN }
   })
-  if (!res.ok) throw new Error('Erro ao buscar cards do contato')
-  const json = await res.json()
-  return (json.items && json.items.length > 0) ? json.items[0] : null
+  
+  if (res.ok) {
+    const json = await res.json()
+    if (json.items && json.items.length > 0) return json.items[0]
+  }
+
+  if (contactName) {
+    qs = new URLSearchParams({ PanelId: PANEL_ID, TextFilter: contactName, PageSize: 1, PageNumber: 1 })
+    res = await fetch(`${BASE_CRM}/panel/card?${qs}`, {
+      headers: { Authorization: TOKEN }
+    })
+    if (res.ok) {
+      const json = await res.json()
+      if (json.items && json.items.length > 0) return json.items[0]
+    }
+  }
+
+  return null
 }
 
 export async function updateCardStep(cardId, stepId) {

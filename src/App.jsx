@@ -23,19 +23,22 @@ function App() {
       setContactId(cid)
       setIsLoadingContact(true)
       
-      Promise.all([
-        getContact(cid).catch(() => null),
-        findCardByContact(cid).catch(() => null)
-      ]).then(([contactData, cardData]) => {
-        if (contactData && contactData.name) {
-          setNome(contactData.name)
-        }
-        if (cardData) {
-          setExistingCard(cardData)
-        }
-      }).finally(() => {
-        setIsLoadingContact(false)
-      })
+      getContact(cid)
+        .then(contactData => {
+          if (contactData && contactData.name) {
+            setNome(contactData.name)
+          }
+          return findCardByContact(cid, contactData?.name)
+        })
+        .then(cardData => {
+          if (cardData) {
+            setExistingCard(cardData)
+          }
+        })
+        .catch(err => console.warn('Erro ao carregar dados:', err))
+        .finally(() => {
+          setIsLoadingContact(false)
+        })
     }
   }, [])
 
@@ -60,7 +63,7 @@ function App() {
       
       let card = existingCard;
       if (!card && contactId) {
-        card = await findCardByContact(contactId).catch(() => null)
+        card = await findCardByContact(contactId, nome.trim()).catch(() => null)
       }
 
       if (card) {
