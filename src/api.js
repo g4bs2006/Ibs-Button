@@ -49,14 +49,10 @@ export async function findCardByContact(contactId, contactName = null) {
   return null
 }
 
-export async function updateCardStep(cardId, stepId, tagIds = []) {
+export async function updateCardStep(cardId, stepId) {
   const payload = {
     fields: ["stepId"],
     stepId
-  }
-  if (tagIds && tagIds.length > 0) {
-    payload.fields.push("tagIds");
-    payload.tagIds = tagIds;
   }
   const res = await proxyFetch(`/crm/v2/panel/card/${cardId}`, {
     method: 'PUT',
@@ -90,7 +86,7 @@ export async function addCardNote(cardId, text) {
   return res.json()
 }
 
-export async function createCard(stepId, title, description, contactId, tagIds = []) {
+export async function createCard(stepId, title, description, contactId) {
   const payload = {
     stepId,
     title,
@@ -99,9 +95,6 @@ export async function createCard(stepId, title, description, contactId, tagIds =
 
   if (contactId) {
     payload.contactIds = [contactId]
-  }
-  if (tagIds && tagIds.length > 0) {
-    payload.tagIds = tagIds
   }
 
   const res = await proxyFetch(`/crm/v1/panel/card`, {
@@ -119,4 +112,23 @@ export async function createCard(stepId, title, description, contactId, tagIds =
   }
 
   return res.json()
+}
+
+export async function addContactTags(contactId, tagIds = []) {
+  if (!tagIds || tagIds.length === 0) return;
+  
+  const payload = { tagIds }
+  const res = await proxyFetch(`/core/v1/contact/${contactId}/tags`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: TOKEN
+    },
+    body: JSON.stringify(payload)
+  })
+  
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    console.warn(`Aviso: Falha ao adicionar etiquetas ao contato (HTTP ${res.status}): ${errText}`)
+  }
 }

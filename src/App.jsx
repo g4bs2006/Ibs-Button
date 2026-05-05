@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { createCard, getContact, findCardByContact, updateCardStep, addCardNote } from './api'
+import { createCard, getContact, findCardByContact, updateCardStep, addCardNote, addContactTags } from './api'
 import { STEPS, TAGS } from './config'
 import './App.css'
 
@@ -75,17 +75,18 @@ function App() {
       }
 
       if (card) {
-        const existingTags = card.tagIds || []
-        const newTags = Array.from(new Set([...existingTags, ...selectedTags]))
-        
-        await updateCardStep(card.id, stepId, newTags)
+        await updateCardStep(card.id, stepId)
         if (finalDescription) {
           await addCardNote(card.id, finalDescription)
         }
         setMessage({ type: 'success', text: 'Card atualizado e movido com sucesso!' })
       } else {
-        await createCard(stepId, nome.trim(), finalDescription, contactId, selectedTags)
+        await createCard(stepId, nome.trim(), finalDescription, contactId)
         setMessage({ type: 'success', text: 'Novo card criado com sucesso!' })
+      }
+
+      if (contactId && selectedTags.length > 0) {
+        await addContactTags(contactId, selectedTags)
       }
       
       setNome('')
