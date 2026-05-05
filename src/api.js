@@ -49,10 +49,14 @@ export async function findCardByContact(contactId, contactName = null) {
   return null
 }
 
-export async function updateCardStep(cardId, stepId) {
+export async function updateCardStep(cardId, stepId, tagIds = []) {
   const payload = {
     fields: ["stepId"],
     stepId
+  }
+  if (tagIds && tagIds.length > 0) {
+    payload.fields.push("tagIds");
+    payload.tagIds = tagIds;
   }
   const res = await proxyFetch(`/crm/v2/panel/card/${cardId}`, {
     method: 'PUT',
@@ -86,7 +90,7 @@ export async function addCardNote(cardId, text) {
   return res.json()
 }
 
-export async function createCard(stepId, title, description, contactId) {
+export async function createCard(stepId, title, description, contactId, tagIds = []) {
   const payload = {
     stepId,
     title,
@@ -95,6 +99,9 @@ export async function createCard(stepId, title, description, contactId) {
 
   if (contactId) {
     payload.contactIds = [contactId]
+  }
+  if (tagIds && tagIds.length > 0) {
+    payload.tagIds = tagIds
   }
 
   const res = await proxyFetch(`/crm/v1/panel/card`, {

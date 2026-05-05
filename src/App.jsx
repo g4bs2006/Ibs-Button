@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { createCard, getContact, findCardByContact, updateCardStep, addCardNote } from './api'
-import { STEPS } from './config'
+import { STEPS, TAGS } from './config'
 import './App.css'
 
 function App() {
@@ -54,8 +54,16 @@ function App() {
       
       let finalDescription = descricao.trim()
       let extraInfo = []
-      if (dor) extraInfo.push(`Dor: ${dor}`)
-      if (urgencia) extraInfo.push(`Urgência: ${urgencia}`)
+      const selectedTags = []
+      
+      if (dor) {
+        extraInfo.push(`Dor: ${dor}`)
+        if (TAGS[dor]) selectedTags.push(TAGS[dor])
+      }
+      if (urgencia) {
+        extraInfo.push(`Urgência: ${urgencia}`)
+        if (TAGS[urgencia]) selectedTags.push(TAGS[urgencia])
+      }
       
       if (extraInfo.length > 0) {
         finalDescription = extraInfo.join('\n') + (finalDescription ? `\n\nObservações:\n${finalDescription}` : '')
@@ -67,13 +75,16 @@ function App() {
       }
 
       if (card) {
-        await updateCardStep(card.id, stepId)
+        const existingTags = card.tagIds || []
+        const newTags = Array.from(new Set([...existingTags, ...selectedTags]))
+        
+        await updateCardStep(card.id, stepId, newTags)
         if (finalDescription) {
           await addCardNote(card.id, finalDescription)
         }
         setMessage({ type: 'success', text: 'Card atualizado e movido com sucesso!' })
       } else {
-        await createCard(stepId, nome.trim(), finalDescription, contactId)
+        await createCard(stepId, nome.trim(), finalDescription, contactId, selectedTags)
         setMessage({ type: 'success', text: 'Novo card criado com sucesso!' })
       }
       
