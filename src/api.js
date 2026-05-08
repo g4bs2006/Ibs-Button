@@ -24,26 +24,15 @@ export async function getContact(contactId) {
   return res.json()
 }
 
-export async function findCardByContact(contactId, contactName = null) {
-  let qs = new URLSearchParams({ PanelId: PANEL_ID, ContactId: contactId, PageSize: 1, PageNumber: 1 })
-  let res = await proxyFetch(`/crm/v1/panel/card?${qs}`, {
+export async function findCardByContact(contactId) {
+  const qs = new URLSearchParams({ PanelId: PANEL_ID, ContactId: contactId, PageSize: 1, PageNumber: 1 })
+  const res = await proxyFetch(`/crm/v1/panel/card?${qs}`, {
     headers: { Authorization: TOKEN }
   })
-  
+
   if (res.ok) {
     const json = await res.json()
     if (json.items && json.items.length > 0) return json.items[0]
-  }
-
-  if (contactName) {
-    qs = new URLSearchParams({ PanelId: PANEL_ID, TextFilter: contactName, PageSize: 1, PageNumber: 1 })
-    res = await proxyFetch(`/crm/v1/panel/card?${qs}`, {
-      headers: { Authorization: TOKEN }
-    })
-    if (res.ok) {
-      const json = await res.json()
-      if (json.items && json.items.length > 0) return json.items[0]
-    }
   }
 
   return null

@@ -28,7 +28,7 @@ function App() {
           if (contactData && contactData.name) {
             setNome(contactData.name)
           }
-          return findCardByContact(cid, contactData?.name)
+          return findCardByContact(cid)
         })
         .then(cardData => {
           if (cardData) {
@@ -71,7 +71,7 @@ function App() {
       
       let card = existingCard;
       if (!card && contactId) {
-        card = await findCardByContact(contactId, nome.trim()).catch(() => null)
+        card = await findCardByContact(contactId).catch(() => null)
       }
 
       if (card) {
@@ -125,7 +125,7 @@ function App() {
             <div className="header-title-row">
               <h3>{existingCard ? 'Atualizar Agendamento' : 'Novo Agendamento'}</h3>
               {existingCard && <span className="badge badge-found">Card Localizado</span>}
-              {!existingCard && contactId && !isLoadingContact && <span className="badge badge-not-found">Novo Card</span>}
+              {!existingCard && contactId && !isLoadingContact && <span className="badge badge-not-found">Card será criado</span>}
             </div>
             <p>{existingCard ? 'Este paciente já possui um card. Ele será movido para a nova etapa.' : 'Preencha os dados abaixo para criar o card.'}</p>
           </div>
