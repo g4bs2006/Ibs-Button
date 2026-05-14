@@ -81,6 +81,7 @@ export async function addCardNote(cardId, text) {
 
 export async function createCard(stepId, title, description, contactId, tagIds = [], dueDate = null) {
   const payload = {
+    panelId: PANEL_ID,
     stepId,
     title,
     description: description || null
@@ -101,7 +102,8 @@ export async function createCard(stepId, title, description, contactId, tagIds =
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.message || `Erro ao criar card (HTTP ${res.status})`)
+    const errMsg = err.message || err.error || err.detail || JSON.stringify(err)
+    throw new Error(`Erro ao criar card (HTTP ${res.status}): ${errMsg}`)
   }
 
   return res.json()
