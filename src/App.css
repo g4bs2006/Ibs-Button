@@ -104,36 +104,68 @@ body {
 .badge-found { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
 .badge-new   { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
 
-/* ── Step Indicator ── */
-.step-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 32px 0;
-  gap: 0;
-}
-
-.step-dot {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  background: #e2e8f0;
-  color: #94a3b8;
-  font-size: 15px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  transition: background 0.25s, color 0.25s;
-  flex-shrink: 0;
-}
-.step-dot-active { background: #2563eb; color: #fff; }
-
-.step-line {
-  flex: 1; max-width: 80px;
-  height: 2px; background: #e2e8f0;
-  transition: background 0.25s;
-}
-.step-line-active { background: #2563eb; }
-
 /* ── Step Content ── */
 .step-content { padding-bottom: 28px; }
+
+/* ── Form Sections ── */
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e9ecf0;
+  border-radius: 10px;
+}
+
+.form-section-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+
+/* ── Label states ── */
+.label-required { color: #dc2626; }
+
+.label-badge-private {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  text-transform: none;
+  letter-spacing: 0;
+  vertical-align: middle;
+}
+
+/* ── Input error state ── */
+.form-group input.input-error,
+.form-group textarea.input-error {
+  border-color: #f87171;
+  background: #fff5f5;
+  box-shadow: 0 0 0 3px rgba(220,38,38,0.08);
+}
+.form-group input.input-error:focus,
+.form-group textarea.input-error:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220,38,38,0.15);
+}
+
+.field-hint-error {
+  font-size: 12px;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
 
 /* ── Form Header ── */
 .form-header {

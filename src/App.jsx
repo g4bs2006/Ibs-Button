@@ -22,12 +22,14 @@ function toDateStr(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-function formatPhone(raw) {
-  if (!raw) return ''
-  const d = String(raw).replace(/\D/g, '')
-  if (d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`
-  if (d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`
-  return raw
+// Detecta números privados/mascarados do WhatsApp (lid@, @g.us, etc.)
+function isPhonePrivate(phone) {
+  if (!phone) return true
+  const str = String(phone)
+  if (str.includes('@')) return true
+  const digits = str.replace(/\D/g, '')
+  if (digits.length < 10) return true
+  return false
 }
 
 function App() {
@@ -36,19 +38,19 @@ function App() {
 
   const [step, setStep] = useState(1)
 
-  // Form (step 1)
+  // Dados do paciente
   const [nome, setNome] = useState('')
   const [telefone, setTelefone] = useState('')
+  const [phonePrivate, setPhonePrivate] = useState(false)
   const [descricao, setDescricao] = useState('')
   const [origem, setOrigem] = useState('crcA')
   const [tagIds, setTagIds] = useState(new Set([TAGS.Agendado]))
 
-  // Contact / card
+  // Contato / card
   const [contactId, setContactId] = useState(null)
-  const [isLoadingContact, setIsLoadingContact] = useState(false)
   const [existingCard, setExistingCard] = useState(null)
 
-  // Calendar (step 2)
+  // Calendário
   const [viewYear, setViewYear] = useState(today.getFullYear())
   const [viewMonth, setViewMonth] = useState(today.getMonth())
   const [selectedDate, setSelectedDate] = useState(null)
@@ -66,17 +68,17 @@ function App() {
     const cid = params.get('contactid') || params.get('contactId')
     if (!cid) return
     setContactId(cid)
-    setIsLoadingContact(true)
     getContact(cid)
       .then(data => {
         if (data?.name) setNome(data.name)
         const phone = data?.phone || data?.phoneNumber || data?.mobilePhone || ''
-        if (phone) setTelefone(phone)
+        const priv = isPhonePrivate(phone)
+        setPhonePrivate(priv)
+        if (!priv) setTelefone(phone)
         return findCardByContact(cid, data?.name)
       })
       .then(card => { if (card) setExistingCard(card) })
       .catch(err => console.warn('Erro ao carregar dados:', err))
-      .finally(() => setIsLoadingContact(false))
   }, [])
 
   useEffect(() => {
@@ -117,8 +119,15 @@ function App() {
     })
   }
 
-  const handleSubmit = async (e) => {
+  const handleNext = (e) => {
     e.preventDefault()
+    if (!nome.trim()) return
+    if (phonePrivate && !telefone.trim()) return
+    setStep(2)
+  }
+
+  const handleSubmit = async (e) => {
+    e && e.preventDefault && e.preventDefault()
     if (!nome.trim()) return
     setLoading(true)
     setMessage(null)
@@ -136,7 +145,7 @@ function App() {
 
       let card = existingCard
       if (!card && contactId) {
-        card = await findCardByContact(contactId).catch(() => null)
+        card = await findCardByContact(contactId, nome.trim()).catch(() => null)
       }
 
       const dueDateTime = selectedDate && selectedSlot ? `${selectedDate}T${selectedSlot.from}:00` : null
@@ -179,7 +188,6 @@ function App() {
         setMessage({ type: 'success', text: baseText })
       }
 
-      // Reset
       setStep(1)
       setSelectedDate(null)
       setSelectedSlot(null)
@@ -197,10 +205,11 @@ function App() {
   }
 
   const calendarDays = buildCalendarDays(viewYear, viewMonth)
-  const avatarInitial = nome ? nome.trim()[0].toUpperCase() : '?'
   const selectedProf = selectedSlot
     ? CLINICORP_PROFESSIONALS.find(p => p.id === selectedSlot.professionalId)
     : null
+
+  const phoneInvalid = phonePrivate && !telefone.trim()
 
   return (
     <div className="page">
@@ -216,39 +225,6 @@ function App() {
 
       <main className="main">
         <div className="form-container">
-
-          {/* Contact bar */}
-          {contactId && (
-            <div className="contact-bar">
-              {isLoadingContact ? (
-                <div className="contact-skeleton">
-                  <div className="skeleton skeleton-avatar" />
-                  <div className="skeleton-lines">
-                    <div className="skeleton skeleton-line w-40" />
-                    <div className="skeleton skeleton-line w-24" />
-                  </div>
-                </div>
-              ) : (
-                <div className="contact-info">
-                  <div className="contact-avatar">{avatarInitial}</div>
-                  <div className="contact-details">
-                    <span className="contact-name">{nome || 'Contato'}</span>
-                    {telefone && <span className="contact-phone">{formatPhone(telefone)}</span>}
-                  </div>
-                  {existingCard
-                    ? <span className="badge badge-found">Card Localizado</span>
-                    : <span className="badge badge-new">Novo Card</span>}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Step indicator */}
-          <div className="step-indicator">
-            <div className={`step-dot ${step >= 1 ? 'step-dot-active' : ''}`}>1</div>
-            <div className={`step-line ${step >= 2 ? 'step-line-active' : ''}`} />
-            <div className={`step-dot ${step >= 2 ? 'step-dot-active' : ''}`}>2</div>
-          </div>
 
           {/* Alert */}
           {message && (
@@ -267,14 +243,14 @@ function App() {
             </div>
           )}
 
-          {/* ── STEP 1: Formulário ── */}
+          {/* ── ETAPA 1: Formulário ── */}
           {step === 1 && (
             <div className="step-content">
               <div className="form-header">
                 <h3>{existingCard ? 'Atualizar Agendamento' : 'Novo Agendamento'}</h3>
                 <p>
                   {existingCard
-                    ? 'Card encontrado. Ele será movido para a nova etapa.'
+                    ? 'Card encontrado — será movido para a nova etapa.'
                     : 'Preencha os dados para criar o card no CRM.'}
                 </p>
                 {existingCard && (
@@ -293,10 +269,14 @@ function App() {
                 )}
               </div>
 
-              <form className="card-form" onSubmit={(e) => { e.preventDefault(); setStep(2) }}>
-                {!contactId && (
+              <form className="card-form" onSubmit={handleNext}>
+
+                {/* Seção: Dados do paciente */}
+                <div className="form-section">
+                  <span className="form-section-label">Dados do Paciente</span>
+
                   <div className="form-group">
-                    <label>Nome do Paciente *</label>
+                    <label>Nome *</label>
                     <input
                       type="text"
                       value={nome}
@@ -305,61 +285,89 @@ function App() {
                       required
                     />
                   </div>
-                )}
 
-                <div className="form-group">
-                  <label>Etiquetas do Contato</label>
-                  <div className="tag-chips">
-                    {TAG_LIST.map(tag => (
-                      <button
-                        key={tag.id}
-                        type="button"
-                        className={[
-                          'tag-chip',
-                          tagIds.has(tag.id) ? 'tag-chip-active' : '',
-                          tag.locked ? 'tag-chip-locked' : '',
-                        ].filter(Boolean).join(' ')}
-                        onClick={() => toggleTag(tag.id)}
-                        title={tag.locked ? 'Etiqueta sempre aplicada' : undefined}
-                      >
-                        {tagIds.has(tag.id) && <span className="tag-chip-check">✓</span>}
-                        {tag.label}
-                      </button>
-                    ))}
+                  <div className="form-group">
+                    <label className={phonePrivate ? 'label-required' : ''}>
+                      Telefone {phonePrivate && <span className="label-badge-private">Número privado — preencha</span>}
+                    </label>
+                    <input
+                      type="tel"
+                      value={telefone}
+                      onChange={(e) => setTelefone(e.target.value)}
+                      placeholder="Ex: (92) 98765-4321"
+                      className={phoneInvalid ? 'input-error' : ''}
+                      required={phonePrivate}
+                    />
+                    {phoneInvalid && (
+                      <span className="field-hint-error">
+                        O número deste contato é privado. Digite o telefone para continuar.
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label>Observações (Opcional)</label>
-                  <textarea
-                    value={descricao}
-                    onChange={(e) => setDescricao(e.target.value)}
-                    placeholder="Informações adicionais do paciente..."
-                    rows="3"
-                  />
-                </div>
+                {/* Seção: Card no CRM */}
+                <div className="form-section">
+                  <span className="form-section-label">Card no CRM</span>
 
-                <div className="form-group">
-                  <label>Origem do Agendamento</label>
-                  <div className="segmented-control">
-                    {['crcA', 'crcB'].map(key => (
-                      <label key={key} className={`segment ${origem === key ? 'active' : ''}`}>
-                        <input
-                          type="radio"
-                          name="origem"
-                          value={key}
-                          checked={origem === key}
-                          onChange={(e) => setOrigem(e.target.value)}
-                          className="sr-only"
-                        />
-                        <span className="segment-text">{key === 'crcA' ? 'CRC A' : 'CRC B'}</span>
-                      </label>
-                    ))}
+                  <div className="form-group">
+                    <label>Etiquetas do Contato</label>
+                    <div className="tag-chips">
+                      {TAG_LIST.map(tag => (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          className={[
+                            'tag-chip',
+                            tagIds.has(tag.id) ? 'tag-chip-active' : '',
+                            tag.locked ? 'tag-chip-locked' : '',
+                          ].filter(Boolean).join(' ')}
+                          onClick={() => toggleTag(tag.id)}
+                          title={tag.locked ? 'Etiqueta sempre aplicada' : undefined}
+                        >
+                          {tagIds.has(tag.id) && <span className="tag-chip-check">✓</span>}
+                          {tag.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Observações</label>
+                    <textarea
+                      value={descricao}
+                      onChange={(e) => setDescricao(e.target.value)}
+                      placeholder="Informações adicionais do paciente..."
+                      rows="3"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Origem do Agendamento</label>
+                    <div className="segmented-control">
+                      {['crcA', 'crcB'].map(key => (
+                        <label key={key} className={`segment ${origem === key ? 'active' : ''}`}>
+                          <input
+                            type="radio"
+                            name="origem"
+                            value={key}
+                            checked={origem === key}
+                            onChange={(e) => setOrigem(e.target.value)}
+                            className="sr-only"
+                          />
+                          <span className="segment-text">{key === 'crcA' ? 'CRC A' : 'CRC B'}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
                 <div className="form-actions">
-                  <button type="submit" className="btn-primary" disabled={!nome.trim()}>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={!nome.trim() || phoneInvalid}
+                  >
                     Próximo: Escolher Horário →
                   </button>
                 </div>
@@ -367,12 +375,12 @@ function App() {
             </div>
           )}
 
-          {/* ── STEP 2: Calendário Clinicorp ── */}
+          {/* ── ETAPA 2: Calendário ── */}
           {step === 2 && (
             <div className="step-content">
               <div className="form-header">
                 <h3>Escolha o melhor horário</h3>
-                <p>Selecione uma data e um horário disponível no Clinicorp.</p>
+                <p>Selecione uma data e um horário no Clinicorp.</p>
               </div>
 
               <div className="calendar-wrap">
@@ -419,32 +427,20 @@ function App() {
                 {selectedDate && (
                   <div className="slots-section">
                     <div className="slots-header">Horários disponíveis</div>
-
-                    {/* Profissional fixo */}
-                    <div className="prof-banner">
-                      <div className="prof-avatar">A</div>
-                      <div className="prof-info">
-                        <span className="prof-name">Dr. Alex Fernando Santos da Silva</span>
-                        <span className="prof-role">Dentista responsável pelos agendamentos</span>
-                      </div>
-                      <span className="prof-badge">Exclusivo</span>
-                    </div>
-
                     {slotsLoading && (
                       <div className="slots-loading-row">
                         <span className="spinner spinner-dark" />
-                        Buscando horários disponíveis para Dr. Alex...
+                        Buscando horários...
                       </div>
                     )}
-                    {slotsError && (
-                      <p className="slots-msg slots-msg-error">⚠ {slotsError}</p>
-                    )}
+                    {slotsError && <p className="slots-msg slots-msg-error">⚠ {slotsError}</p>}
                     {!slotsLoading && !slotsError && availableSlots.length === 0 && (
-                      <p className="slots-msg">Dr. Alex não possui horários disponíveis nesta data.</p>
+                      <p className="slots-msg">Nenhum horário disponível para esta data.</p>
                     )}
                     {!slotsLoading && availableSlots.length > 0 && (
                       <div className="slots-list">
                         {availableSlots.map((slot, i) => {
+                          const prof = CLINICORP_PROFESSIONALS.find(p => p.id === slot.professionalId)
                           const isActive = selectedSlot?.from === slot.from && selectedSlot?.professionalId === slot.professionalId
                           return (
                             <button
@@ -454,7 +450,7 @@ function App() {
                               onClick={() => setSelectedSlot(isActive ? null : slot)}
                             >
                               <span className="slot-row-time">{slot.from} às {slot.to}</span>
-                              {isActive && <span className="slot-row-check">✓</span>}
+                              {prof && <span className="slot-row-prof">{prof.name.split(' ')[0]}</span>}
                             </button>
                           )
                         })}
@@ -464,15 +460,10 @@ function App() {
                 )}
               </div>
 
-              {/* Selected slot summary */}
               {selectedSlot && (
                 <div className="slot-summary">
-                  <span className="slot-summary-icon">✓</span>
-                  <span>
-                    <strong>{selectedDate}</strong> às <strong>{selectedSlot.from}</strong>
-                    {' · '}
-                    <span className="slot-summary-prof">Dr. Alex Fernando Santos da Silva</span>
-                  </span>
+                  ✓ {selectedDate} às {selectedSlot.from}
+                  {selectedProf ? ` · ${selectedProf.name.split(' ')[0]}` : ''}
                 </div>
               )}
 
