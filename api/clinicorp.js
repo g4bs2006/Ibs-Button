@@ -1,6 +1,7 @@
 const AUTH = 'Basic ' + Buffer.from('primeodontocenter:b6b383e7-6b27-4378-8dfb-057648f6f017').toString('base64')
 const SUBSCRIBER_ID = '43945422000142'
-const CODE_LINK = '75094'
+const BUSINESS_ID = 6505624431493120
+const CODE_LINK = 75094
 const BASE = 'https://api.clinicorp.com/rest/v1'
 
 function normTime(t) {
@@ -71,16 +72,18 @@ export default async function handler(req, res) {
 
   const toTime = addMinutes(fromTime, duracao)
 
+  // Payload conforme schema da doc: /appointment/create_online_scheduling
   const payload = {
-    code_link: CODE_LINK,
-    subscriber_id: SUBSCRIBER_ID,
+    CodeLink: CODE_LINK,
     PatientName: patientName,
     MobilePhone: patientPhone ? patientPhone.replace(/\D/g, '') : '',
-    ProfessionalId: Number(dentistId),
-    Date: dateLocal,
-    From: fromTime,
-    To: toTime,
-    Notes: notes || 'Agendamento via Prime Agendamento',
+    fromTime: fromTime,
+    toTime: toTime,
+    date: new Date(`${dateLocal}T${fromTime}:00-03:00`).toISOString(),
+    Dentist_PersonId: Number(dentistId),
+    Clinic_BusinessId: BUSINESS_ID,
+    IsOnlineScheduling: true,
+    SchedulingReason: notes || 'Agendamento via Prime Agendamento',
   }
 
   console.log('[Clinicorp POST] payload:', JSON.stringify(payload))
