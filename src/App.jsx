@@ -145,7 +145,7 @@ function App() {
         await updateCardStep(card.id, stepId, dueDateTime)
         if (finalDescription) await addCardNote(card.id, finalDescription)
       } else {
-        await createCard(stepId, nome.trim(), finalDescription, contactId, Array.from(tagIds), dueDateTime)
+        await createCard(stepId, nome.trim(), finalDescription, contactId, dueDateTime)
       }
 
       if (contactId && tagIds.size > 0) {

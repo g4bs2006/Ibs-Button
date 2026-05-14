@@ -79,7 +79,7 @@ export async function addCardNote(cardId, text) {
   return res.json()
 }
 
-export async function createCard(stepId, title, description, contactId, tagIds = [], dueDate = null) {
+export async function createCard(stepId, title, description, contactId, dueDate = null) {
   const payload = {
     panelId: PANEL_ID,
     stepId,
@@ -88,7 +88,6 @@ export async function createCard(stepId, title, description, contactId, tagIds =
   }
 
   if (contactId) payload.contactIds = [contactId]
-  if (tagIds && tagIds.length > 0) payload.tagIds = tagIds
   if (dueDate) payload.dueDate = new Date(dueDate).toISOString()
 
   const res = await proxyFetch(`/crm/v1/panel/card`, {
