@@ -2,7 +2,7 @@ import { TOKEN, PANEL_ID } from './config'
 
 async function proxyFetch(path, options = {}) {
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  
+
   if (isLocal) {
     return fetch(`/api${path}`, options);
   } else {
@@ -38,11 +38,15 @@ export async function findCardByContact(contactId) {
   return null
 }
 
-export async function updateCardStep(cardId, stepId) {
-  const payload = {
-    fields: ["stepId"],
-    stepId
+export async function updateCardStep(cardId, stepId, dueDate = null) {
+  const fields = ['stepId']
+  const payload = { fields, stepId }
+
+  if (dueDate) {
+    fields.push('dueDate')
+    payload.dueDate = new Date(dueDate).toISOString()
   }
+
   const res = await proxyFetch(`/crm/v2/panel/card/${cardId}`, {
     method: 'PUT',
     headers: {
@@ -75,16 +79,16 @@ export async function addCardNote(cardId, text) {
   return res.json()
 }
 
-export async function createCard(stepId, title, description, contactId) {
+export async function createCard(stepId, title, description, contactId, tagIds = [], dueDate = null) {
   const payload = {
     stepId,
     title,
     description: description || null
   }
 
-  if (contactId) {
-    payload.contactIds = [contactId]
-  }
+  if (contactId) payload.contactIds = [contactId]
+  if (tagIds && tagIds.length > 0) payload.tagIds = tagIds
+  if (dueDate) payload.dueDate = new Date(dueDate).toISOString()
 
   const res = await proxyFetch(`/crm/v1/panel/card`, {
     method: 'POST',
@@ -103,9 +107,31 @@ export async function createCard(stepId, title, description, contactId) {
   return res.json()
 }
 
+export async function fetchClinicorpSlots(date) {
+  const res = await fetch(`/api/clinicorp?date=${date}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || `Erro ao buscar horários (HTTP ${res.status})`)
+  }
+  return res.json()
+}
+
+export async function scheduleClinicorp(payload) {
+  const res = await fetch('/api/clinicorp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || `Erro no Clinicorp (HTTP ${res.status})`)
+  }
+  return res.json()
+}
+
 export async function addContactTags(contactId, tagIds = []) {
   if (!tagIds || tagIds.length === 0) return;
-  
+
   const payload = { tagIds }
   const res = await proxyFetch(`/core/v1/contact/${contactId}/tags`, {
     method: 'POST',
@@ -115,7 +141,7 @@ export async function addContactTags(contactId, tagIds = []) {
     },
     body: JSON.stringify(payload)
   })
-  
+
   if (!res.ok) {
     const errText = await res.text().catch(() => '')
     console.warn(`Aviso: Falha ao adicionar etiquetas ao contato (HTTP ${res.status}): ${errText}`)
