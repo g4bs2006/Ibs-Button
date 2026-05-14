@@ -1,8 +1,16 @@
 {
+  "functions": {
+    "api/proxy.js": { "maxDuration": 15 },
+    "api/clinicorp.js": { "maxDuration": 15 }
+  },
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://api.wts.chat/:path*"
+      "source": "/api/proxy",
+      "destination": "/api/proxy"
+    },
+    {
+      "source": "/api/clinicorp",
+      "destination": "/api/clinicorp"
     }
   ]
 }
