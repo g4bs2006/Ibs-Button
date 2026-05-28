@@ -31,8 +31,8 @@ async function findPatientByPhone(phone) {
 
   const patient = Array.isArray(body) ? body[0] : body
   if (ok && patient?.PatientId) {
-    console.log('[Clinicorp] Paciente encontrado:', patient.PatientId)
-    return patient
+    console.log('[Clinicorp] Paciente encontrado, ID:', patient.PatientId)
+    return { patientId: patient.PatientId }
   }
   return null
 }
@@ -49,9 +49,9 @@ async function createPatient(name, phone) {
     })
   })
 
-  if (ok) {
-    console.log('[Clinicorp] Paciente criado:', JSON.stringify(body))
-    return body
+  if (ok && body.id) {
+    console.log('[Clinicorp] Paciente criado, ID:', body.id)
+    return { patientId: body.id }
   }
 
   console.warn('[Clinicorp] Falha ao criar paciente:', JSON.stringify(body))
@@ -102,37 +102,35 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Passo 1: verificar se o paciente já existe no Clinicorp
-    let alreadyPatient = false
-    const existingPatient = await findPatientByPhone(patientPhone)
+    // Passo 1: buscar paciente pelo telefone
+    let patientResult = await findPatientByPhone(patientPhone)
 
-    if (existingPatient) {
-      alreadyPatient = true
-    } else {
+    if (!patientResult) {
       // Passo 2: criar o paciente se não existir
-      const newPatient = await createPatient(patientName, patientPhone)
-      alreadyPatient = newPatient !== null
+      patientResult = await createPatient(patientName, patientPhone)
     }
 
-    // Passo 3: criar o agendamento
+    if (!patientResult) {
+      return res.status(400).json({ error: 'Não foi possível encontrar ou criar o paciente no Clinicorp.' })
+    }
+
+    // Passo 3: criar o agendamento com o ID do paciente
     const payload = {
-      CodeLink: CODE_LINK,
+      Clinic_BusinessId: BUSINESS_ID,
+      Patient_PersonId: Number(patientResult.patientId),
+      Dentist_PersonId: Number(dentistId),
       PatientName: patientName,
       MobilePhone: patientPhone ? patientPhone.replace(/\D/g, '') : '',
+      date: `${dateLocal}T03:00:00.000Z`,
       fromTime: fromTime,
       toTime: toTime,
-      date: `${dateLocal}T03:00:00.000Z`,
-      Dentist_PersonId: Number(dentistId),
-      Clinic_BusinessId: BUSINESS_ID,
-      IsOnlineScheduling: true,
-      AlreadyPatient: alreadyPatient,
-      SchedulingReason: notes || 'Agendamento via Prime Agendamento',
+      Notes: notes || 'Agendamento via Prime Agendamento',
     }
 
     console.log('[Clinicorp POST] payload:', JSON.stringify(payload))
 
     const { ok, status, body } = await clinicorpFetch(
-      `${BASE}/appointment/create_online_scheduling`,
+      `${BASE}/appointment/create_appointment_by_api`,
       { method: 'POST', body: JSON.stringify(payload) }
     )
 
