@@ -125,9 +125,13 @@ export async function scheduleClinicorp(payload) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || `Erro no Clinicorp (HTTP ${res.status})`)
+    console.error('[Clinicorp] Falha ao agendar. Payload enviado:', payload, 'Resposta:', err)
+    const detail = err.detail ? ` — Detalhe: ${JSON.stringify(err.detail)}` : ''
+    throw new Error((err.error || `Erro no Clinicorp (HTTP ${res.status})`) + detail)
   }
-  return res.json()
+  const data = await res.json()
+  console.log('[Clinicorp] Agendamento criado com sucesso:', data)
+  return data
 }
 
 export async function addContactTags(contactId, tagIds = []) {

@@ -183,7 +183,7 @@ function App() {
       if (clinicorpStatus === 'ok') {
         setMessage({ type: 'success', text: baseText + ' Agendamento no Clinicorp confirmado.' })
       } else if (clinicorpStatus) {
-        setMessage({ type: 'warning', text: `${baseText} (Clinicorp: ${clinicorpStatus})` })
+        setMessage({ type: 'error', text: `${baseText}\n\nErro no Clinicorp: ${clinicorpStatus}\n\nVerifique o console do navegador (F12) para mais detalhes.` })
       } else {
         setMessage({ type: 'success', text: baseText })
       }
@@ -196,7 +196,8 @@ function App() {
       setOrigem('crcA')
       setTagIds(new Set([TAGS.Agendado]))
       setExistingCard(null)
-      setTimeout(() => setMessage(null), 6000)
+      const timeout = clinicorpStatus && clinicorpStatus !== 'ok' ? 12000 : 6000
+      setTimeout(() => setMessage(null), timeout)
     } catch (err) {
       setMessage({ type: 'error', text: err.message })
     } finally {

@@ -79,7 +79,7 @@ export default async function handler(req, res) {
     MobilePhone: patientPhone ? patientPhone.replace(/\D/g, '') : '',
     fromTime: fromTime,
     toTime: toTime,
-    date: new Date(`${dateLocal}T${fromTime}:00-03:00`).toISOString(),
+    date: dateLocal,
     Dentist_PersonId: Number(dentistId),
     Clinic_BusinessId: BUSINESS_ID,
     IsOnlineScheduling: true,
@@ -95,12 +95,15 @@ export default async function handler(req, res) {
     )
 
     if (!ok) {
+      const errorMsg = body.Message || body.message || body.error || `Erro ao criar agendamento (${status})`
+      console.error('[Clinicorp POST] resposta de erro:', JSON.stringify(body))
       return res.status(status).json({
-        error: body.Message || body.message || `Erro ao criar agendamento (${status})`,
+        error: errorMsg,
         detail: body,
       })
     }
 
+    console.log('[Clinicorp POST] sucesso:', JSON.stringify(body))
     return res.status(200).json({ success: true, data: body })
   } catch (err) {
     console.error('[Clinicorp POST] exception:', err.message)
