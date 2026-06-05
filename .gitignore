@@ -1,5 +1,4 @@
-# Environment variables (NUNCA commitar)
-.env
+# Environment variables
 .env.local
 .env.production
 
