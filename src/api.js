@@ -96,7 +96,7 @@ export async function createCard(stepId, title, description, contactId, dueDate 
 
   if (contactId) payload.contactIds = [contactId]
   if (dueDate) payload.dueDate = new Date(dueDate).toISOString()
-  if (labelId) payload.labelIds = [labelId]
+  if (labelId) payload.tagIds = [labelId]
 
   const res = await proxyFetch(`/crm/v1/panel/card`, {
     method: 'POST',
