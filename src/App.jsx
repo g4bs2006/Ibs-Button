@@ -22,6 +22,16 @@ function toDateStr(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
+function normalizePhone(phone) {
+  if (!phone) return ''
+  let digits = String(phone).replace(/\D/g, '')
+  // Remove código do país +55 (Brasil)
+  if (digits.startsWith('55') && digits.length >= 12) {
+    digits = digits.slice(2)
+  }
+  return digits
+}
+
 function isPhonePrivate(phone) {
   if (!phone) return true
   const str = String(phone)
@@ -81,7 +91,7 @@ function App() {
         const phone = data?.phone || data?.phoneNumber || data?.mobilePhone || ''
         const priv = isPhonePrivate(phone)
         setPhonePrivate(priv)
-        if (!priv) setTelefone(phone)
+        if (!priv) setTelefone(normalizePhone(phone))
       })
       .catch(err => console.warn('Erro ao carregar contato:', err))
   }, [])
