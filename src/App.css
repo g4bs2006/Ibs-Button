@@ -36,6 +36,7 @@ body {
 }
 
 .brand-initials { font-size: 16px; font-weight: 800; color: #fff; }
+.brand-initials-sm { font-size: 11px; letter-spacing: 0.5px; }
 .brand-name { font-size: 15px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px; }
 .brand-sub  { font-size: 11px; color: #64748b; margin-top: 1px; }
 

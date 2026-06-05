@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import {
   createCard, getContact, findCardByContact,
-  updateCardStep, addCardNote, addContactTags, scheduleClinicorp, fetchClinicorpSlots
+  updateCardStep, addCardNote, scheduleClinicorp, fetchClinicorpSlots
 } from './api'
-import { STEPS, STEP_NAMES, TAGS, TAG_LIST, CLINICORP_PROFESSIONALS } from './config'
+import { UNITS, CRC_LIST, UNIT_LIST } from './config'
 import './App.css'
 
 const WEEKDAYS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB']
@@ -22,7 +22,6 @@ function toDateStr(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-// Detecta números privados/mascarados do WhatsApp (lid@, @g.us, etc.)
 function isPhonePrivate(phone) {
   if (!phone) return true
   const str = String(phone)
@@ -30,6 +29,13 @@ function isPhonePrivate(phone) {
   const digits = str.replace(/\D/g, '')
   if (digits.length < 10) return true
   return false
+}
+
+function getStepName(stepId) {
+  for (const unit of Object.values(UNITS)) {
+    if (unit.STEP_AGENDADO === stepId) return unit.STEP_NAME
+  }
+  return 'Outra etapa'
 }
 
 function App() {
@@ -43,8 +49,8 @@ function App() {
   const [telefone, setTelefone] = useState('')
   const [phonePrivate, setPhonePrivate] = useState(false)
   const [descricao, setDescricao] = useState('')
-  const [origem, setOrigem] = useState('crcA')
-  const [tagIds, setTagIds] = useState(new Set([TAGS.Agendado]))
+  const [crc, setCrc] = useState('rita')
+  const [unidade, setUnidade] = useState('bueno')
 
   // Contato / card
   const [contactId, setContactId] = useState(null)
@@ -63,6 +69,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState(null)
 
+  // Carrega dados do contato a partir do parâmetro na URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const cid = params.get('contactid') || params.get('contactId')
@@ -75,23 +82,30 @@ function App() {
         const priv = isPhonePrivate(phone)
         setPhonePrivate(priv)
         if (!priv) setTelefone(phone)
-        return findCardByContact(cid, data?.name)
       })
-      .then(card => { if (card) setExistingCard(card) })
-      .catch(err => console.warn('Erro ao carregar dados:', err))
+      .catch(err => console.warn('Erro ao carregar contato:', err))
   }, [])
 
+  // Verifica se já existe card na unidade selecionada
+  useEffect(() => {
+    if (!contactId) return
+    findCardByContact(contactId, unidade)
+      .then(card => setExistingCard(card || null))
+      .catch(() => setExistingCard(null))
+  }, [contactId, unidade])
+
+  // Busca horários quando data ou unidade muda
   useEffect(() => {
     if (!selectedDate) return
     setSlotsLoading(true)
     setSlotsError(null)
     setSelectedSlot(null)
     setAvailableSlots([])
-    fetchClinicorpSlots(selectedDate)
+    fetchClinicorpSlots(selectedDate, unidade)
       .then(slots => setAvailableSlots(slots))
       .catch(err => setSlotsError(err.message))
       .finally(() => setSlotsLoading(false))
-  }, [selectedDate])
+  }, [selectedDate, unidade])
 
   const prevMonth = () => {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1) }
@@ -110,15 +124,6 @@ function App() {
     setSelectedSlot(null)
   }
 
-  const toggleTag = (tagId) => {
-    if (tagId === TAGS.Agendado) return
-    setTagIds(prev => {
-      const next = new Set(prev)
-      next.has(tagId) ? next.delete(tagId) : next.add(tagId)
-      return next
-    })
-  }
-
   const handleNext = (e) => {
     e.preventDefault()
     if (!nome.trim()) return
@@ -133,7 +138,13 @@ function App() {
     setMessage(null)
 
     try {
-      const stepId = STEPS[origem]
+      const crcLabel = CRC_LIST.find(c => c.key === crc)?.label || crc
+      const unitCfg = UNITS[unidade]
+      const stepId = unitCfg.STEP_AGENDADO
+      const panelId = unitCfg.PANEL_ID
+      const labelId = unitCfg.LABELS[crc]
+      const notesText = `Agendado pela ${crcLabel}`
+
       let extraInfo = []
       if (selectedDate && selectedSlot) {
         extraInfo.push(`Agendamento: ${selectedDate} às ${selectedSlot.from}`)
@@ -145,20 +156,16 @@ function App() {
 
       let card = existingCard
       if (!card && contactId) {
-        card = await findCardByContact(contactId, nome.trim()).catch(() => null)
+        card = await findCardByContact(contactId, unidade).catch(() => null)
       }
 
       const dueDateTime = selectedDate && selectedSlot ? `${selectedDate}T${selectedSlot.from}:00` : null
 
       if (card) {
-        await updateCardStep(card.id, stepId, dueDateTime)
+        await updateCardStep(card.id, stepId, dueDateTime, labelId)
         if (finalDescription) await addCardNote(card.id, finalDescription)
       } else {
-        await createCard(stepId, nome.trim(), finalDescription, contactId, dueDateTime)
-      }
-
-      if (contactId && tagIds.size > 0) {
-        await addContactTags(contactId, Array.from(tagIds))
+        await createCard(stepId, nome.trim(), finalDescription, contactId, dueDateTime, panelId, labelId)
       }
 
       let clinicorpStatus = null
@@ -171,7 +178,8 @@ function App() {
             dateLocal: selectedDate,
             fromTime: selectedSlot.from,
             toTime: selectedSlot.to,
-            notes: finalDescription || 'Agendamento via Prime Agendamento',
+            notes: notesText,
+            unit: unidade,
           })
           clinicorpStatus = 'ok'
         } catch (err) {
@@ -181,7 +189,7 @@ function App() {
 
       const baseText = card ? 'Card atualizado com sucesso!' : 'Card criado com sucesso!'
       if (clinicorpStatus === 'ok') {
-        setMessage({ type: 'success', text: baseText + ' Agendamento no Clinicorp confirmado.' })
+        setMessage({ type: 'success', text: `${baseText} Agendamento no Clinicorp confirmado.` })
       } else if (clinicorpStatus) {
         setMessage({ type: 'error', text: `${baseText}\n\nErro no Clinicorp: ${clinicorpStatus}\n\nVerifique o console do navegador (F12) para mais detalhes.` })
       } else {
@@ -193,8 +201,8 @@ function App() {
       setSelectedSlot(null)
       setAvailableSlots([])
       setDescricao('')
-      setOrigem('crcA')
-      setTagIds(new Set([TAGS.Agendado]))
+      setCrc('rita')
+      setUnidade('bueno')
       setExistingCard(null)
       const timeout = clinicorpStatus && clinicorpStatus !== 'ok' ? 12000 : 6000
       setTimeout(() => setMessage(null), timeout)
@@ -206,19 +214,21 @@ function App() {
   }
 
   const calendarDays = buildCalendarDays(viewYear, viewMonth)
+  const unitProfessionals = UNITS[unidade].PROFESSIONALS
   const selectedProf = selectedSlot
-    ? CLINICORP_PROFESSIONALS.find(p => p.id === selectedSlot.professionalId)
+    ? unitProfessionals.find(p => p.id === selectedSlot.professionalId)
     : null
 
   const phoneInvalid = phonePrivate && !telefone.trim()
+  const unidadeLabel = UNIT_LIST.find(u => u.key === unidade)?.label || unidade
 
   return (
     <div className="page">
       <header className="header">
         <div className="brand">
-          <div className="brand-mark"><span className="brand-initials">P</span></div>
+          <div className="brand-mark"><span className="brand-initials brand-initials-sm">IBS</span></div>
           <div className="brand-text">
-            <h1 className="brand-name">Prime Agendamento</h1>
+            <h1 className="brand-name">IBS Agendamentos</h1>
             <p className="brand-sub">Criação Rápida de Cards no CRM</p>
           </div>
         </div>
@@ -251,14 +261,14 @@ function App() {
                 <h3>{existingCard ? 'Atualizar Agendamento' : 'Novo Agendamento'}</h3>
                 <p>
                   {existingCard
-                    ? 'Card encontrado — será movido para a nova etapa.'
+                    ? 'Card encontrado — será movido para a etapa Agendado.'
                     : 'Preencha os dados para criar o card no CRM.'}
                 </p>
                 {existingCard && (
                   <div className="card-preview">
                     <div className="card-preview-row">
                       <span className="card-preview-label">Etapa atual</span>
-                      <span className="card-preview-value">{STEP_NAMES[existingCard.stepId] || 'Outra etapa'}</span>
+                      <span className="card-preview-value">{getStepName(existingCard.stepId)}</span>
                     </div>
                     {existingCard.title && (
                       <div className="card-preview-row">
@@ -295,7 +305,7 @@ function App() {
                       type="tel"
                       value={telefone}
                       onChange={(e) => setTelefone(e.target.value)}
-                      placeholder="Ex: (92) 98765-4321"
+                      placeholder="Ex: (62) 98765-4321"
                       className={phoneInvalid ? 'input-error' : ''}
                       required={phonePrivate}
                     />
@@ -312,23 +322,39 @@ function App() {
                   <span className="form-section-label">Card no CRM</span>
 
                   <div className="form-group">
-                    <label>Etiquetas do Contato</label>
-                    <div className="tag-chips">
-                      {TAG_LIST.map(tag => (
-                        <button
-                          key={tag.id}
-                          type="button"
-                          className={[
-                            'tag-chip',
-                            tagIds.has(tag.id) ? 'tag-chip-active' : '',
-                            tag.locked ? 'tag-chip-locked' : '',
-                          ].filter(Boolean).join(' ')}
-                          onClick={() => toggleTag(tag.id)}
-                          title={tag.locked ? 'Etiqueta sempre aplicada' : undefined}
-                        >
-                          {tagIds.has(tag.id) && <span className="tag-chip-check">✓</span>}
-                          {tag.label}
-                        </button>
+                    <label>CRC Responsável</label>
+                    <div className="segmented-control">
+                      {CRC_LIST.map(item => (
+                        <label key={item.key} className={`segment ${crc === item.key ? 'active' : ''}`}>
+                          <input
+                            type="radio"
+                            name="crc"
+                            value={item.key}
+                            checked={crc === item.key}
+                            onChange={(e) => setCrc(e.target.value)}
+                            className="sr-only"
+                          />
+                          <span className="segment-text">{item.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Unidade</label>
+                    <div className="segmented-control">
+                      {UNIT_LIST.map(item => (
+                        <label key={item.key} className={`segment ${unidade === item.key ? 'active' : ''}`}>
+                          <input
+                            type="radio"
+                            name="unidade"
+                            value={item.key}
+                            checked={unidade === item.key}
+                            onChange={(e) => setUnidade(e.target.value)}
+                            className="sr-only"
+                          />
+                          <span className="segment-text">{item.label}</span>
+                        </label>
                       ))}
                     </div>
                   </div>
@@ -341,25 +367,6 @@ function App() {
                       placeholder="Informações adicionais do paciente..."
                       rows="3"
                     />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Origem do Agendamento</label>
-                    <div className="segmented-control">
-                      {['crcA', 'crcB'].map(key => (
-                        <label key={key} className={`segment ${origem === key ? 'active' : ''}`}>
-                          <input
-                            type="radio"
-                            name="origem"
-                            value={key}
-                            checked={origem === key}
-                            onChange={(e) => setOrigem(e.target.value)}
-                            className="sr-only"
-                          />
-                          <span className="segment-text">{key === 'crcA' ? 'CRC A' : 'CRC B'}</span>
-                        </label>
-                      ))}
-                    </div>
                   </div>
                 </div>
 
@@ -381,7 +388,7 @@ function App() {
             <div className="step-content">
               <div className="form-header">
                 <h3>Escolha o melhor horário</h3>
-                <p>Selecione uma data e um horário no Clinicorp.</p>
+                <p>Agenda Clinicorp — Unidade {unidadeLabel}.</p>
               </div>
 
               <div className="calendar-wrap">
@@ -441,7 +448,7 @@ function App() {
                     {!slotsLoading && availableSlots.length > 0 && (
                       <div className="slots-list">
                         {availableSlots.map((slot, i) => {
-                          const prof = CLINICORP_PROFESSIONALS.find(p => p.id === slot.professionalId)
+                          const prof = unitProfessionals.find(p => p.id === slot.professionalId)
                           const isActive = selectedSlot?.from === slot.from && selectedSlot?.professionalId === slot.professionalId
                           return (
                             <button
@@ -451,7 +458,7 @@ function App() {
                               onClick={() => setSelectedSlot(isActive ? null : slot)}
                             >
                               <span className="slot-row-time">{slot.from} às {slot.to}</span>
-                              {prof && <span className="slot-row-prof">{prof.name.split(' ')[0]}</span>}
+                              {prof && <span className="slot-row-prof">{prof.name.split(' ').slice(0, 2).join(' ')}</span>}
                             </button>
                           )
                         })}
@@ -464,7 +471,7 @@ function App() {
               {selectedSlot && (
                 <div className="slot-summary">
                   ✓ {selectedDate} às {selectedSlot.from}
-                  {selectedProf ? ` · ${selectedProf.name.split(' ')[0]}` : ''}
+                  {selectedProf ? ` · ${selectedProf.name.split(' ').slice(0, 2).join(' ')}` : ''}
                 </div>
               )}
 

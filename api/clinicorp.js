@@ -1,7 +1,18 @@
-const AUTH = 'Basic ' + Buffer.from('primeodontocenter:b6b383e7-6b27-4378-8dfb-057648f6f017').toString('base64')
-const SUBSCRIBER_ID = '43945422000142'
-const BUSINESS_ID = 6505624431493120
-const CODE_LINK = 75094
+const UNITS = {
+  eldorado: {
+    AUTH: 'Basic ' + Buffer.from('ibsodonto1s:9c0a9ff2-d2f2-4c52-9c14-b6f0790dc958').toString('base64'),
+    SUBSCRIBER_ID: 'ibsodonto1s',
+    BUSINESS_ID: '5245340127592448',
+    CODE_LINK: 'ibs1.implantes.com.br',
+  },
+  bueno: {
+    AUTH: 'Basic ' + Buffer.from('ibsimplantes:e7d070f3-402e-4058-918b-47ee7d375ee3').toString('base64'),
+    SUBSCRIBER_ID: 'ibsimplantes',
+    BUSINESS_ID: '6271591347912704',
+    CODE_LINK: 'ibs',
+  },
+}
+
 const BASE = 'https://api.clinicorp.com/rest/v1'
 
 function normTime(t) {
@@ -10,8 +21,11 @@ function normTime(t) {
   return `${String(Number(h)).padStart(2, '0')}:${String(Number(m || 0)).padStart(2, '0')}`
 }
 
-async function clinicorpFetch(url, options = {}) {
-  const res = await fetch(url, { ...options, headers: { Authorization: AUTH, 'Content-Type': 'application/json', ...options.headers } })
+async function clinicorpFetch(url, options = {}, auth) {
+  const res = await fetch(url, {
+    ...options,
+    headers: { Authorization: auth, 'Content-Type': 'application/json', ...options.headers }
+  })
   const text = await res.text()
   let body = {}
   try { body = JSON.parse(text) } catch { body = { raw: text } }
@@ -21,12 +35,13 @@ async function clinicorpFetch(url, options = {}) {
   return { ok: res.ok, status: res.status, body }
 }
 
-async function findPatientByPhone(phone) {
+async function findPatientByPhone(phone, unitCfg) {
   const cleanPhone = phone ? phone.replace(/\D/g, '') : ''
   if (!cleanPhone) return null
 
   const { ok, body } = await clinicorpFetch(
-    `${BASE}/patient/get?subscriber_id=${SUBSCRIBER_ID}&Phone=${cleanPhone}`
+    `${BASE}/patient/get?subscriber_id=${unitCfg.SUBSCRIBER_ID}&Phone=${cleanPhone}`,
+    {}, unitCfg.AUTH
   )
 
   const patient = Array.isArray(body) ? body[0] : body
@@ -37,17 +52,17 @@ async function findPatientByPhone(phone) {
   return null
 }
 
-async function createPatient(name, phone) {
+async function createPatient(name, phone, unitCfg) {
   const cleanPhone = phone ? phone.replace(/\D/g, '') : ''
   const { ok, body } = await clinicorpFetch(`${BASE}/patient/create`, {
     method: 'POST',
     body: JSON.stringify({
-      subscriber_id: SUBSCRIBER_ID,
+      subscriber_id: unitCfg.SUBSCRIBER_ID,
       Name: name,
       MobilePhone: cleanPhone,
       IgnoreSameName: 'X',
     })
-  })
+  }, unitCfg.AUTH)
 
   if (ok && body.id) {
     console.log('[Clinicorp] Paciente criado, ID:', body.id)
@@ -62,12 +77,14 @@ export default async function handler(req, res) {
 
   // ── GET: busca horários disponíveis ──────────────────────────────────────
   if (req.method === 'GET') {
-    const date = req.query?.date
+    const { date, unit } = req.query
     if (!date) return res.status(400).json({ error: 'Parâmetro date obrigatório (YYYY-MM-DD)' })
 
+    const unitCfg = UNITS[unit] || UNITS.bueno
+
     try {
-      const url = `${BASE}/appointment/get_avaliable_times_calendar?subscriber_id=${SUBSCRIBER_ID}&code_link=${CODE_LINK}&date=${date}`
-      const { ok, status, body } = await clinicorpFetch(url)
+      const url = `${BASE}/appointment/get_avaliable_times_calendar?subscriber_id=${unitCfg.SUBSCRIBER_ID}&code_link=${unitCfg.CODE_LINK}&date=${date}`
+      const { ok, status, body } = await clinicorpFetch(url, {}, unitCfg.AUTH)
 
       if (!ok) {
         return res.status(status).json({
@@ -95,19 +112,21 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   // ── POST: busca/cria paciente e agenda ───────────────────────────────────
-  const { patientName, patientPhone, dentistId, dateLocal, fromTime, toTime, notes } = req.body || {}
+  const { patientName, patientPhone, dentistId, dateLocal, fromTime, toTime, notes, unit } = req.body || {}
 
   if (!patientName || !dentistId || !dateLocal || !fromTime || !toTime) {
     return res.status(400).json({ error: 'Campos obrigatórios: patientName, dentistId, dateLocal, fromTime, toTime' })
   }
 
+  const unitCfg = UNITS[unit] || UNITS.bueno
+
   try {
     // Passo 1: buscar paciente pelo telefone
-    let patientResult = await findPatientByPhone(patientPhone)
+    let patientResult = await findPatientByPhone(patientPhone, unitCfg)
 
     if (!patientResult) {
       // Passo 2: criar o paciente se não existir
-      patientResult = await createPatient(patientName, patientPhone)
+      patientResult = await createPatient(patientName, patientPhone, unitCfg)
     }
 
     if (!patientResult) {
@@ -116,7 +135,7 @@ export default async function handler(req, res) {
 
     // Passo 3: criar o agendamento com o ID do paciente
     const payload = {
-      Clinic_BusinessId: BUSINESS_ID,
+      Clinic_BusinessId: unitCfg.BUSINESS_ID,
       Patient_PersonId: Number(patientResult.patientId),
       Dentist_PersonId: Number(dentistId),
       PatientName: patientName,
@@ -124,7 +143,7 @@ export default async function handler(req, res) {
       date: `${dateLocal}T03:00:00.000Z`,
       fromTime: fromTime,
       toTime: toTime,
-      Notes: notes || 'Agendamento via Prime Agendamento',
+      Notes: notes || 'Agendamento IBS',
       CategoryColor: '#FF5733',
       CategoryDescription: 'Avaliação',
     }
@@ -133,7 +152,8 @@ export default async function handler(req, res) {
 
     const { ok, status, body } = await clinicorpFetch(
       `${BASE}/appointment/create_appointment_by_api`,
-      { method: 'POST', body: JSON.stringify(payload) }
+      { method: 'POST', body: JSON.stringify(payload) },
+      unitCfg.AUTH
     )
 
     if (!ok || body.isBusy) {

@@ -1,36 +1,45 @@
-export const TOKEN = 'Bearer pn_22zvaOtn9H6mmwNKktsuKd91F8UDdLnuu085N5bw'
-export const PANEL_ID = 'fd4df083-7422-4171-9ee2-1c098e799798'
+export const TOKEN = 'Bearer pn_YIU6pMNVjoFgcOnN7k1keODbU3xopWeaJafXBSXE3U'
 
-export const STEPS = {
-  crcA: '884ffe20-5cdb-4549-9301-07d38dc278a1',
-  crcB: 'c86979eb-cb1f-43b4-aabf-f726a304d011',
+export const UNITS = {
+  bueno: {
+    PANEL_ID: '11c26f1f-b3cf-49a5-9bd0-d538e012474b',
+    STEP_AGENDADO: '25f59a8b-027d-440c-8980-fc742db0692c',
+    STEP_NAME: 'AGENDADO',
+    LABELS: {
+      rita:   'd0436e3f-4379-4ce2-b497-4044e9b65ab9',
+      nay:    '1677a3fc-3c6f-497b-9324-e25de4d98c2d',
+      gabi:   '4a4fdb8d-a6f4-4e5d-88a8-639a6deef852',
+      flavia: '81d4fb9a-a41e-4a72-96d9-ff9ab3b42245',
+    },
+    PROFESSIONALS: [
+      { id: '4881605042110464', name: 'Dra. Fernanda Borges' },
+    ],
+  },
+  eldorado: {
+    PANEL_ID: 'de790da5-1a2f-42f7-ae8e-272af4666232',
+    STEP_AGENDADO: 'c3cab169-cb35-4a31-aa03-eae9bbb10f98',
+    STEP_NAME: 'AGENDADO',
+    LABELS: {
+      rita:   '5f84df4c-097a-425c-9c1b-85c1ade00ac6',
+      nay:    '6aa749a4-6e90-431b-8beb-9f6e2d009b43',
+      gabi:   'ea235c5f-bd36-4be1-ba16-e35568b4d021',
+      flavia: 'de59cff6-fec1-4462-a022-281043ce26c6',
+    },
+    PROFESSIONALS: [
+      { id: '5296360903933952', name: 'Dra. Fernanda Borges' },
+      { id: '4960287076188160', name: 'Dra. Wellen Leticia' },
+    ],
+  },
 }
 
-export const STEP_NAMES = {
-  '884ffe20-5cdb-4549-9301-07d38dc278a1': 'CRC A',
-  'c86979eb-cb1f-43b4-aabf-f726a304d011': 'CRC B',
-}
-
-export const TAGS = {
-  Mastigação: '5c735bac-3286-45cb-95aa-bcd6e97a2ffc',
-  Estética: '8f57a996-bc26-47ac-b8b8-ee72da1044fe',
-  Alta: '19b22c78-dcd0-44b0-9b27-16aa67c9d58d',
-  Baixa: '1e3fabcf-905f-4902-9758-4758c4324547',
-  Agendado: '47870808-399c-45c3-b056-a2c66c8ae337'
-}
-
-// Exibição das tags na interface (rótulo + ID)
-export const TAG_LIST = [
-  { id: TAGS.Agendado,   label: 'Agendado',   locked: true  },
-  { id: TAGS.Mastigação, label: 'Mastigação',  locked: false },
-  { id: TAGS.Estética,   label: 'Estética',    locked: false },
-  { id: TAGS.Alta,       label: 'Alta Urgência', locked: false },
-  { id: TAGS.Baixa,      label: 'Baixa Urgência', locked: false },
+export const CRC_LIST = [
+  { key: 'rita',   label: 'Rita' },
+  { key: 'nay',    label: 'Nay' },
+  { key: 'gabi',   label: 'Gabi' },
+  { key: 'flavia', label: 'Flávia' },
 ]
 
-export const CLINICORP_PROFESSIONALS = [
-  { id: '4693001712435200', name: 'Rafael da Cunha Santos' },
-  { id: '5010362672742400', name: 'Anayle Paixão Silva' },
-  { id: '6525572572774400', name: 'Alex Fernando Santos da Silva' },
-  { id: '6548129122615296', name: 'Emerson Gomes' },
+export const UNIT_LIST = [
+  { key: 'bueno',    label: 'Bueno' },
+  { key: 'eldorado', label: 'Eldorado' },
 ]
