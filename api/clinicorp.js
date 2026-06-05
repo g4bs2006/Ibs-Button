@@ -1,14 +1,14 @@
 const UNITS = {
   eldorado: {
-    AUTH: 'Basic ' + Buffer.from('ibsodonto1s:9c0a9ff2-d2f2-4c52-9c14-b6f0790dc958').toString('base64'),
-    SUBSCRIBER_ID: 'ibsodonto1s',
-    BUSINESS_ID: '5245340127592448',
+    AUTH: 'Basic ' + Buffer.from(`${process.env.CLINICORP_USER_ELDORADO}:${process.env.CLINICORP_PASS_ELDORADO}`).toString('base64'),
+    SUBSCRIBER_ID: process.env.CLINICORP_USER_ELDORADO,
+    BUSINESS_ID: process.env.CLINICORP_BUSINESS_ELDORADO,
     CODE_LINK: 'ibs1.implantes.com.br',
   },
   bueno: {
-    AUTH: 'Basic ' + Buffer.from('ibsimplantes:e7d070f3-402e-4058-918b-47ee7d375ee3').toString('base64'),
-    SUBSCRIBER_ID: 'ibsimplantes',
-    BUSINESS_ID: '6271591347912704',
+    AUTH: 'Basic ' + Buffer.from(`${process.env.CLINICORP_USER_BUENO}:${process.env.CLINICORP_PASS_BUENO}`).toString('base64'),
+    SUBSCRIBER_ID: process.env.CLINICORP_USER_BUENO,
+    BUSINESS_ID: process.env.CLINICORP_BUSINESS_BUENO,
     CODE_LINK: 'ibs',
   },
 }

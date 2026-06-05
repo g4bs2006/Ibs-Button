@@ -1,4 +1,4 @@
-export const TOKEN = 'Bearer pn_YIU6pMNVjoFgcOnN7k1keODbU3xopWeaJafXBSXE3U'
+export const TOKEN = import.meta.env.VITE_CRM_TOKEN
 
 export const UNITS = {
   bueno: {
