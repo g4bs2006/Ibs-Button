@@ -50,10 +50,11 @@ export async function updateCardStep(cardId, stepId, dueDate = null, labelId = n
   }
 
   if (labelId) {
-    payload.labelIds = [labelId]
+    fields.push('tagIds')
+    payload.tagIds = [labelId]
   }
 
-  const res = await proxyFetch(`/crm/v2/panel/card/${cardId}`, {
+  const res = await proxyFetch(`/crm/v3/panel/card/${cardId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',

@@ -135,7 +135,7 @@ export default async function handler(req, res) {
 
     // Passo 3: criar o agendamento com o ID do paciente
     const payload = {
-      Clinic_BusinessId: unitCfg.BUSINESS_ID,
+      Clinic_BusinessId: Number(unitCfg.BUSINESS_ID),
       Patient_PersonId: Number(patientResult.patientId),
       Dentist_PersonId: Number(dentistId),
       PatientName: patientName,
